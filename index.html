@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5" />
+  <title>Haryana Waste Management Control</title>
+  <!-- Google Fonts: Poppins (300,400,500,600,700) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <!-- PapaParse for CSV parsing -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <!-- styles.css and script.js will be injected later, but we link them here -->
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- ====== HEADER ===== -->
+  <header class="main-header">
+    <div class="header-content">
+      <div class="brand">
+        <div class="gov-badge">
+          <span class="avatar-placeholder">🏛️</span>
+        </div>
+        <h1 class="brand-title">Haryana Waste Management <span>Control</span></h1>
+      </div>
+      <div class="header-actions">
+        <button class="notif-btn" aria-label="Notifications" id="notifBtn">
+          <span class="notif-icon">🔔</span>
+          <span class="notif-badge" id="notifBadge">3</span>
+        </button>
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+          <span class="theme-icon">🌙</span>
+        </button>
+      </div>
+    </div>
+    <!-- Stats bar -->
+    <div class="stats-bar">
+      <div class="stat-card glass-card">
+        <span class="stat-icon">🚩</span>
+        <div class="stat-info">
+          <span class="stat-value" id="totalFlags">0</span>
+          <span class="stat-label">Total Red Flags</span>
+        </div>
+      </div>
+      <div class="stat-card glass-card">
+        <span class="stat-icon pulse-dot">🟠</span>
+        <div class="stat-info">
+          <span class="stat-value" id="activeRegions">0</span>
+          <span class="stat-label">Active Regions (3+)</span>
+        </div>
+      </div>
+      <div class="stat-card glass-card">
+        <span class="stat-icon">✨</span>
+        <div class="stat-info">
+          <span class="stat-value" id="areasCleaned">0</span>
+          <span class="stat-label">Areas Cleaned Today</span>
+        </div>
+      </div>
+    </div>
+    <!-- Wave divider (SVG via CSS) -->
+    <div class="wave-divider"></div>
+  </header>
+
+  <!-- ====== MAIN LAYOUT ====== -->
+  <div class="dashboard-container">
+    <!-- LEFT: Map (65%) -->
+    <section class="map-section" aria-label="Haryana map with district markers">
+      <div class="map-wrapper glass-card">
+        <div class="map-toolbar">
+          <span class="map-title">🗺️ District Overview</span>
+          <button class="heat-toggle" id="heatToggle">🌡️ Heat Map</button>
+        </div>
+        <div class="map-container" id="mapContainer">
+          <!-- SVG map placeholder -->
+          <svg viewBox="0 0 800 600" id="haryanaMap" preserveAspectRatio="xMidYMid meet">
+            <!-- Background pattern / districts will be drawn as simple rects for demo -->
+            <rect width="800" height="600" fill="rgba(240,253,244,0.3)" rx="16" />
+            <!-- Markers will be placed by JS using absolute positioning inside this SVG -->
+            <g id="markerGroup"></g>
+          </svg>
+          <!-- markers overlay for click handling -->
+          <div id="markerOverlay" class="marker-overlay"></div>
+          <!-- Cleaning truck animation -->
+          <div class="truck-icon" id="truckIcon">🚛</div>
+        </div>
+        <div class="map-legend">
+          <span><span class="legend-dot safe"></span> Safe (0-2)</span>
+          <span><span class="legend-dot warning"></span> Warning (3)</span>
+          <span><span class="legend-dot critical"></span> Critical (4+)</span>
+          <span class="last-updated" id="lastUpdated">Updated: just now</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- RIGHT: Sidebar (35%) -->
+    <aside class="sidebar">
+      <!-- Panel 1: Report Waste -->
+      <div class="panel glass-card">
+        <h2 class="panel-title">📋 Report Waste</h2>
+        <div class="step-indicator">
+          <span class="step active" data-step="1">1</span>
+          <span class="step" data-step="2">2</span>
+          <span class="step" data-step="3">3</span>
+        </div>
+        <form id="reportForm" novalidate>
+          <!-- Step 1: Region -->
+          <div class="form-step active" data-step="1">
+            <label for="regionSelect">Select District</label>
+            <select id="regionSelect" required>
+              <option value="">— Choose —</option>
+            </select>
+            <button type="button" class="step-next">Next →</button>
+          </div>
+          <!-- Step 2: Issue Type -->
+          <div class="form-step" data-step="2">
+            <p class="step-label">What's the issue?</p>
+            <div class="issue-cards">
+              <div class="issue-card" data-issue="garbage">
+                <span>🗑️</span> Garbage Pile-up
+              </div>
+              <div class="issue-card" data-issue="water">
+                <span>💧</span> Stagnant Water
+              </div>
+            </div>
+            <button type="button" class="step-prev">← Back</button>
+            <button type="button" class="step-next">Next →</button>
+          </div>
+          <!-- Step 3: Details -->
+          <div class="form-step" data-step="3">
+            <label for="issueDesc">Description</label>
+            <textarea id="issueDesc" rows="2" placeholder="Describe the issue..."></textarea>
+            <div class="urgency-group">
+              <label>Urgency</label>
+              <select id="urgencySelect">
+                <option value="low">Low</option>
+                <option value="medium" selected>Medium</option>
+                <option value="high">High</option>
+              </select>
+            </div>
+            <div class="upload-zone" id="uploadZone">
+              <span>📸 Drop image or click to upload</span>
+              <input type="file" accept="image/*" id="imageUpload" hidden />
+            </div>
+            <div class="form-actions">
+              <button type="button" class="step-prev">← Back</button>
+              <button type="submit" class="btn-submit" id="submitBtn">🚩 Raise Red Flag</button>
+            </div>
+          </div>
+        </form>
+        <div id="formSuccess" class="form-success hidden">
+          <span class="success-icon">✅</span> Flag raised successfully!
+        </div>
+      </div>
+
+      <!-- Panel 2: Live Activity Feed -->
+      <div class="panel glass-card">
+        <h2 class="panel-title">🔴 Live Activity Feed</h2>
+        <div class="activity-feed" id="activityFeed">
+          <div class="feed-item">Loading activity...</div>
+        </div>
+      </div>
+
+      <!-- Panel 3: Cleaning Log -->
+      <div class="panel glass-card">
+        <h2 class="panel-title">🧹 Cleaning Log</h2>
+        <div class="log-filters">
+          <input type="date" id="filterDate" />
+          <select id="filterRegion"><option value="">All Regions</option></select>
+          <select id="filterStatus"><option value="">All Status</option>
+            <option value="Completed">✅ Completed</option>
+            <option value="In Progress">🔄 In Progress</option>
+            <option value="Scheduled">📋 Scheduled</option>
+          </select>
+        </div>
+        <div class="log-timeline" id="logTimeline">
+          <div class="empty-state">🧹 No cleaning records yet</div>
+        </div>
+        <button class="load-more" id="loadMoreLog">Load More</button>
+      </div>
+    </aside>
+  </div>
+
+  <!-- ====== REGION DETAIL MODAL ====== -->
+  <div class="modal-overlay" id="regionModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-card glass-card">
+      <button class="modal-close" id="modalClose" aria-label="Close">✕</button>
+      <h2 id="modalTitle">District Name</h2>
+      <div class="modal-status" id="modalStatus">✅ Safe</div>
+      <div class="modal-stats">
+        <div><span>🚩 Flags</span> <span id="modalFlags">0</span></div>
+        <div><span>🧹 Last Cleaned</span> <span id="modalLastCleaned">—</span></div>
+        <div><span>⭐ Cleanliness</span> <span id="modalScore">0</span></div>
+      </div>
+      <div class="modal-timeline" id="modalTimeline"></div>
+      <div class="modal-actions">
+        <button class="btn-deploy" id="modalDeploy">🧹 Deploy Cleaning</button>
+        <button class="btn-close-modal" id="modalCloseBtn">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====== TOAST CONTAINER ====== -->
+  <div class="toast-container" id="toastContainer" aria-live="polite"></div>
+
+  <!-- ====== FOOTER ====== -->
+  <footer class="main-footer">
+    <p>Made for Haryana Government · <span id="year"></span></p>
+    <nav>
+      <a href="#">About</a> · <a href="#">Contact</a> · <a href="#">Privacy</a>
+    </nav>
+  </footer>
+
+  <!-- ====== SCRIPTS ====== -->
+  <script src="script.js"></script>
+</body>
+</html>
